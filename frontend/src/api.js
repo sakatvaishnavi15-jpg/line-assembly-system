@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = 'https://line-assembly-system.onrender.com/api';
 
 export function getApiBase() {
   return API_BASE;
