@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../api';
+import { api, getApiBase } from '../api';
 import { useToast } from '../components/Toast';
 
 export default function Assembly({ onExit }) {
@@ -39,7 +39,7 @@ export default function Assembly({ onExit }) {
   useEffect(() => {
     if (!round || !finishedLabel) return;
 
-    const printUrl = `http://localhost:4000${finishedLabel.label_endpoint}`;
+    const printUrl = `${getApiBase()}${finishedLabel.label_endpoint}`;
     const labelWindow = window.open(printUrl, '_blank', 'noopener,noreferrer');
 
     if (labelWindow) {
@@ -232,7 +232,7 @@ export default function Assembly({ onExit }) {
                     <div className="finished-check">✓</div>
                     <div className="finished-serial mono">{finishedLabel.build_serial_no}</div>
                     <a className="btn btn-secondary" href={
-                      `http://localhost:4000${finishedLabel.label_endpoint}`
+                      `${getApiBase()}${finishedLabel.label_endpoint}`
                     } target="_blank" rel="noreferrer">Print / View label</a>
                   </div>
                 )}

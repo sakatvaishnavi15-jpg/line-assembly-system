@@ -7,7 +7,7 @@ router.get('/main-part/:mainPartId', async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT b.bom_id, b.main_part_id, b.child_part_id, b.qty_required, b.sequence_no,
-              c.part_code, c.part_name, c.uom, c.category
+              c.part_code, c.part_name, c.category
        FROM bom_link b
        JOIN child_part_master c ON c.child_part_id = b.child_part_id
        WHERE b.main_part_id = $1
