@@ -72,7 +72,7 @@ export default function ChildParts() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"?`)) return;
+    if (!window.confirm(`Delete "${name}"?\n\nIf this part is linked in a BOM, has QR codes, or appears in scan logs, the delete will be blocked.`)) return;
     try {
       await api.deleteChildPart(id);
       showToast(`Deleted "${name}"`);

@@ -75,6 +75,9 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Deleted', deleted: result.rows[0] });
   } catch (err) {
     console.error(err);
+    if (err.code === '23503') {
+      return res.status(409).json({ error: 'Cannot delete — this child part is linked in a BOM, QR code, or scan log. Remove it from all references first.' });
+    }
     res.status(500).json({ error: 'Failed to delete child part' });
   }
 });

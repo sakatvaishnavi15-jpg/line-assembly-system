@@ -75,7 +75,7 @@ export default function MainParts() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"? This also removes its BOM links.`)) return;
+    if (!window.confirm(`Delete "${name}"?\n\nThis will also remove all its BOM links. If assembly rounds or scan logs reference this part, the delete will be blocked.`)) return;
     try {
       await api.deleteMainPart(id);
       showToast(`Deleted "${name}"`);
