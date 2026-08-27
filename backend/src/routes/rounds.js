@@ -240,7 +240,7 @@ router.post('/:roundId/scan', async (req, res) => {
       // on demand via GET /api/rounds/:roundId/label — we just flag it's ready here.
       finishedQr = {
         build_serial_no: buildSerialNo,
-        label_endpoint: `/api/rounds/${roundId}/label?t=${Date.now()}`
+        label_endpoint: `/rounds/${roundId}/label?t=${Date.now()}`
       };
     }
 
