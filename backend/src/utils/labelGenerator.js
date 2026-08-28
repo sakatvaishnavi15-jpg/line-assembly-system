@@ -17,8 +17,9 @@ const bwipjs = require('bwip-js');
  * @param {Array}  opts.checklist     - [{ part_name, qty_required }, ...]
  * @returns {Promise<Buffer>} PDF file as a buffer
  */
-async function generateBuildLabelPDF({ mainPartName, partCode, buildSerialNo, displayCode, checklist }) {
+async function generateBuildLabelPDF({ mainPartName, brand, partCode, buildSerialNo, displayCode, checklist }) {
   const codeToShow = displayCode || buildSerialNo;
+  const brandName = typeof brand === 'string' ? brand.trim() : '';
 
   // QR encodes the build serial number (used for scanning/traceability lookups)
   const qrBuffer = await QRCode.toBuffer(buildSerialNo, { margin: 1, width: 300 });
@@ -61,11 +62,7 @@ async function generateBuildLabelPDF({ mainPartName, partCode, buildSerialNo, di
     doc.fontSize(21);
     doc.text('*PARTS LIST', contentX + titleWidth + 34, contentTop + 2, { lineBreak: false });
 
-    // Add accessories section heading without disturbing the existing layout.
-    doc.font('Helvetica-Bold').fontSize(13);
-    doc.text('ACCESSORIES BAG', contentX, contentTop + 26, { lineBreak: false });
-
-    const rowTop = contentTop + 52;
+    const rowTop = contentTop + 30;
 
     // ---- Left column: QR code + barcode + human-readable code ----
     const leftColX = contentX;
@@ -86,6 +83,16 @@ async function generateBuildLabelPDF({ mainPartName, partCode, buildSerialNo, di
         width: barcodeWidth + 20,
         align: 'center'
       });
+
+    if (brandName) {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(10)
+        .text(brandName.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 24, {
+          width: barcodeWidth + 20,
+          align: 'center'
+        });
+    }
 
     // ---- Right column: NAME / QTY. table ----
     const tableX = leftColX + qrSize + 56;

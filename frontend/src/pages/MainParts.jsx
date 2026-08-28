@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast';
 export default function MainParts() {
   const [parts, setParts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ part_code: '', part_name: '', description: '' });
+  const [form, setForm] = useState({ part_code: '', part_name: '', brand: '', description: '' });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -37,7 +37,7 @@ export default function MainParts() {
     try {
       await api.createMainPart(form);
       showToast(`Created "${form.part_name}"`);
-      setForm({ part_code: '', part_name: '', description: '' });
+      setForm({ part_code: '', part_name: '', brand: '', description: '' });
       load();
     } catch (err) {
       showToast(err.message, 'error');
@@ -51,6 +51,7 @@ export default function MainParts() {
     setDraft({
       part_code: part.part_code,
       part_name: part.part_name,
+      brand: part.brand || '',
       description: part.description || '',
       revision: part.revision || 'A',
       status: part.status || 'Active'
@@ -114,6 +115,14 @@ export default function MainParts() {
                 onChange={(e) => setForm({ ...form, part_name: e.target.value })}
               />
             </div>
+            <div className="field">
+              <label>Brand</label>
+              <input
+                placeholder="e.g. ABC"
+                value={form.brand}
+                onChange={(e) => setForm({ ...form, brand: e.target.value })}
+              />
+            </div>
             <div className="field" style={{ flex: 2 }}>
               <label>Description (optional)</label>
               <input
@@ -142,6 +151,7 @@ export default function MainParts() {
                 <th>ID</th>
                 <th>Part Code</th>
                 <th>Name</th>
+                <th>Brand</th>
                 <th>Description</th>
                 <th>Revision</th>
                 <th>Status</th>
@@ -172,6 +182,16 @@ export default function MainParts() {
                         />
                       ) : (
                         p.part_name
+                      )}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input
+                          value={draft.brand}
+                          onChange={(e) => setDraft({ ...draft, brand: e.target.value })}
+                        />
+                      ) : (
+                        p.brand || '—'
                       )}
                     </td>
                     <td>

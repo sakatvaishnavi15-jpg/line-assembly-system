@@ -8,6 +8,7 @@ CREATE TABLE main_part_master (
     main_part_id    SERIAL PRIMARY KEY,
     part_code       VARCHAR(50) UNIQUE NOT NULL,
     part_name       VARCHAR(150) NOT NULL,
+    brand           VARCHAR(100),
     description     TEXT,
     revision        VARCHAR(20) DEFAULT 'A',
     status          VARCHAR(20) DEFAULT 'Active', -- Active / Inactive

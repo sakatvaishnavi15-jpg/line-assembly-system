@@ -307,25 +307,24 @@ router.get('/:roundId/label', async (req, res) => {
     }
 
     const mainPartResult = await pool.query(
-      'SELECT part_name FROM main_part_master WHERE main_part_id = $1',
+      'SELECT part_name, part_code, brand FROM main_part_master WHERE main_part_id = $1',
       [round.main_part_id]
     );
-    const mainPartName = mainPartResult.rows[0].part_name;
+    const mainPart = mainPartResult.rows[0];
+    const mainPartName = mainPart.part_name;
+    const mainPartBrand = mainPart.brand;
 
     // qty_required here doubles as the "parts used" list for the label table
     const checklist = await getChecklist(roundId, round.main_part_id);
 
-    const partCode = await pool.query(
-      'SELECT part_code FROM main_part_master WHERE main_part_id = $1',
-      [round.main_part_id]
-    );
     const totalQty = checklist.reduce((sum, item) => sum + Number(item.qty_required || 0), 0);
     // The build serial itself is the exact label code. Keep the last 4 digits as the round suffix.
     const displayCode = round.build_serial_no;
 
     const pdfBuffer = await generateBuildLabelPDF({
       mainPartName,
-      partCode: partCode.rows[0].part_code,
+      brand: mainPartBrand,
+      partCode: mainPart.part_code,
       buildSerialNo: round.build_serial_no,
       displayCode,
       checklist

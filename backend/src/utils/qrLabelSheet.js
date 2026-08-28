@@ -51,14 +51,6 @@ async function generateQrLabelSheetPDF(items) {
         const qrY = 32;
         doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
 
-        // Unique QR code text beneath, well clear of the bottom margin
-        doc
-          .font('Helvetica-Bold')
-          .fontSize(8.5)
-          .text(qr_code, 10, qrY + qrSize + 10, {
-            width: contentWidth,
-            align: 'center'
-          });
       }
 
       doc.end();
