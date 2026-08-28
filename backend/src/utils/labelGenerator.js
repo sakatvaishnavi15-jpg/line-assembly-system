@@ -27,8 +27,8 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
   const barcodeBuffer = await bwipjs.toBuffer({
     bcid: 'code128',
     text: codeToShow,
-    scale: 3,
-    height: 14,
+    scale: 4,
+    height: 20,
     includetext: false,
     paddingwidth: 0,
     paddingheight: 0
@@ -65,20 +65,20 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
 
     // ---- Left column: QR code + barcode + human-readable code ----
     const leftColX = contentX;
-    const qrSize = 148;
+    const qrSize = 156;
 
     doc.image(qrBuffer, leftColX, rowTop, { width: qrSize, height: qrSize });
 
-    const barcodeWidth = 172;
-    const barcodeHeight = 36;
+    const barcodeWidth = 210;
+    const barcodeHeight = 52;
     const barcodeX = leftColX - (barcodeWidth - qrSize) / 2;
-    const barcodeY = rowTop + qrSize + 16;
+    const barcodeY = rowTop + qrSize + 24;
     doc.image(barcodeBuffer, barcodeX, barcodeY, { width: barcodeWidth, height: barcodeHeight });
 
     doc
       .font('Helvetica-Bold')
-      .fontSize(9.5)
-      .text(codeToShow.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 8, {
+      .fontSize(11)
+      .text(codeToShow.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 10, {
         width: barcodeWidth + 20,
         align: 'center'
       });
@@ -86,8 +86,8 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
     if (mainPartBrand) {
       doc
         .font('Helvetica-Bold')
-        .fontSize(8.8)
-        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 10, barcodeY + barcodeHeight + 22, {
+        .fontSize(9.5)
+        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 10, barcodeY + barcodeHeight + 26, {
           width: barcodeWidth + 20,
           align: 'center'
         });
@@ -96,10 +96,10 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
     // ---- Right column: NAME / QTY. table ----
     const tableX = leftColX + qrSize + 56;
     const tableWidth = contentRight - tableX;
-    const qtyColWidth = 46;
+    const qtyColWidth = 52;
     const nameColWidth = tableWidth - qtyColWidth;
 
-    doc.font('Helvetica-Bold').fontSize(14.5);
+    doc.font('Helvetica-Bold').fontSize(15.5);
     doc.text('NAME', tableX, rowTop);
     doc.text('QTY.', tableX + nameColWidth, rowTop, { width: qtyColWidth, align: 'right' });
 
@@ -110,9 +110,9 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
     const bottomLimit = pageH - inset - 20;
     const availableHeight = bottomLimit - (headerLineY + 4);
     const rowCount = Math.max(checklist.length, 1);
-    const rowHeight = Math.min(23, Math.max(16, availableHeight / rowCount));
+    const rowHeight = Math.min(26, Math.max(18, availableHeight / rowCount));
 
-    doc.font('Helvetica').fontSize(10.5);
+    doc.font('Helvetica').fontSize(11.5);
     let rowY = headerLineY + 4;
 
     checklist.forEach((item) => {
