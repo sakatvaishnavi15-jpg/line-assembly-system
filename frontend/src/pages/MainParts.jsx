@@ -118,7 +118,7 @@ export default function MainParts() {
             <div className="field">
               <label>Brand</label>
               <input
-                placeholder="e.g. ABC"
+                placeholder="e.g. Micron"
                 value={form.brand}
                 onChange={(e) => setForm({ ...form, brand: e.target.value })}
               />
