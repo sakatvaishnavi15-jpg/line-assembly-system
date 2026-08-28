@@ -10,16 +10,15 @@ const bwipjs = require('bwip-js');
  *
  * @param {Object} opts
  * @param {string} opts.mainPartName  - Name of the finished assembly
+ * @param {string} opts.mainPartBrand - Brand name shown under the serial/barcode area
  * @param {string} opts.partCode      - Main part's short code (not shown directly, kept for callers)
  * @param {string} opts.buildSerialNo - Unique serial number for this build (encoded in the QR)
- * @param {string} opts.displayCode   - Human-readable code printed under the barcode
- *                                      (format: PARTCODE + DATE + SERIALNO + QUANTITY)
+ * @param {string} opts.displayCode   - Human-readable code encoded in the barcode
  * @param {Array}  opts.checklist     - [{ part_name, qty_required }, ...]
  * @returns {Promise<Buffer>} PDF file as a buffer
  */
-async function generateBuildLabelPDF({ mainPartName, partCode, brand, buildSerialNo, displayCode, checklist }) {
+async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, buildSerialNo, displayCode, checklist }) {
   const codeToShow = displayCode || buildSerialNo;
-  const brandLabel = (brand || '').trim();
 
   // QR encodes the build serial number (used for scanning/traceability lookups)
   const qrBuffer = await QRCode.toBuffer(buildSerialNo, { margin: 1, width: 300 });
@@ -62,7 +61,7 @@ async function generateBuildLabelPDF({ mainPartName, partCode, brand, buildSeria
     doc.fontSize(21);
     doc.text('*PARTS LIST', contentX + titleWidth + 34, contentTop + 2, { lineBreak: false });
 
-    const rowTop = contentTop + 52;
+    const rowTop = contentTop + 40;
 
     // ---- Left column: QR code + barcode + human-readable code ----
     const leftColX = contentX;
@@ -84,11 +83,11 @@ async function generateBuildLabelPDF({ mainPartName, partCode, brand, buildSeria
         align: 'center'
       });
 
-    if (brandLabel) {
+    if (mainPartBrand) {
       doc
         .font('Helvetica-Bold')
-        .fontSize(9.5)
-        .text(brandLabel.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 22, {
+        .fontSize(8.8)
+        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 10, barcodeY + barcodeHeight + 22, {
           width: barcodeWidth + 20,
           align: 'center'
         });

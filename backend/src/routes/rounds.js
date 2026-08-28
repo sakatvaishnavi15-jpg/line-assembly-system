@@ -326,8 +326,8 @@ router.get('/:roundId/label', async (req, res) => {
 
     const pdfBuffer = await generateBuildLabelPDF({
       mainPartName,
+      mainPartBrand,
       partCode: partCode.rows[0].part_code,
-      brand: mainPartBrand,
       buildSerialNo: round.build_serial_no,
       displayCode,
       checklist

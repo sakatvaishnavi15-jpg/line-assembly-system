@@ -51,7 +51,7 @@ async function generateQrLabelSheetPDF(items) {
         const qrY = 32;
         doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
 
-        // Keep it clean: only the child part code and the QR image are printed.
+        // Keep only the child-part code and QR image on each label.
       }
 
       doc.end();
