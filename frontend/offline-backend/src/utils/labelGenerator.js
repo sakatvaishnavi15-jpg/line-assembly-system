@@ -27,11 +27,11 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
   const barcodeBuffer = await bwipjs.toBuffer({
     bcid: 'code128',
     text: codeToShow,
-    scale: 4,
-    height: 20,
+    scale: 5,
+    height: 26,
     includetext: false,
-    paddingwidth: 0,
-    paddingheight: 0
+    paddingwidth: 8,
+    paddingheight: 8
   });
 
   return new Promise((resolve, reject) => {
@@ -64,22 +64,24 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
     const rowTop = contentTop + 40;
 
     // ---- Left column: QR code + barcode + human-readable code ----
-    const leftColX = contentX;
+    const leftGroupX = contentX + 8;
+    const leftGroupWidth = 220;
     const qrSize = 156;
+    const qrX = leftGroupX + (leftGroupWidth - qrSize) / 2;
 
-    doc.image(qrBuffer, leftColX, rowTop, { width: qrSize, height: qrSize });
+    doc.image(qrBuffer, qrX, rowTop, { width: qrSize, height: qrSize });
 
-    const barcodeWidth = 210;
-    const barcodeHeight = 52;
-    const barcodeX = leftColX - (barcodeWidth - qrSize) / 2;
-    const barcodeY = rowTop + qrSize + 24;
+    const barcodeWidth = 196;
+    const barcodeHeight = 64;
+    const barcodeX = leftGroupX + (leftGroupWidth - barcodeWidth) / 2;
+    const barcodeY = rowTop + qrSize + 12;
     doc.image(barcodeBuffer, barcodeX, barcodeY, { width: barcodeWidth, height: barcodeHeight });
 
     doc
       .font('Helvetica-Bold')
       .fontSize(11)
-      .text(codeToShow.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 10, {
-        width: barcodeWidth + 20,
+      .text(codeToShow.toUpperCase(), barcodeX - 14, barcodeY + barcodeHeight + 10, {
+        width: barcodeWidth + 28,
         align: 'center'
       });
 
@@ -87,14 +89,14 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
       doc
         .font('Helvetica-Bold')
         .fontSize(9.5)
-        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 10, barcodeY + barcodeHeight + 26, {
-          width: barcodeWidth + 20,
+        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 14, barcodeY + barcodeHeight + 26, {
+          width: barcodeWidth + 28,
           align: 'center'
         });
     }
 
     // ---- Right column: NAME / QTY. table ----
-    const tableX = leftColX + qrSize + 56;
+    const tableX = leftGroupX + leftGroupWidth + 26;
     const tableWidth = contentRight - tableX;
     const qtyColWidth = 52;
     const nameColWidth = tableWidth - qtyColWidth;

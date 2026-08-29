@@ -46,6 +46,18 @@ router.post('/', async (req, res) => {
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    if (err.code === '42703') {
+      try {
+        const fallbackResult = await pool.query(
+          `INSERT INTO main_part_master (part_code, part_name, description, revision)
+           VALUES ($1, $2, $3, COALESCE($4, 'A')) RETURNING *`,
+          [part_code, part_name, description || null, revision]
+        );
+        return res.status(201).json(fallbackResult.rows[0]);
+      } catch (fallbackErr) {
+        console.error(fallbackErr);
+      }
+    }
     console.error(err);
     if (err.code === '23505') {
       return res.status(409).json({ error: 'part_code already exists' });
@@ -74,6 +86,26 @@ router.put('/:id', async (req, res) => {
     }
     res.json(result.rows[0]);
   } catch (err) {
+    if (err.code === '42703') {
+      try {
+        const fallbackResult = await pool.query(
+          `UPDATE main_part_master
+           SET part_code = COALESCE($1, part_code),
+               part_name = COALESCE($2, part_name),
+               description = COALESCE($3, description),
+               revision = COALESCE($4, revision),
+               status = COALESCE($5, status)
+           WHERE main_part_id = $6 RETURNING *`,
+          [part_code, part_name, description, revision, status, req.params.id]
+        );
+        if (fallbackResult.rows.length === 0) {
+          return res.status(404).json({ error: 'Main part not found' });
+        }
+        return res.json(fallbackResult.rows[0]);
+      } catch (fallbackErr) {
+        console.error(fallbackErr);
+      }
+    }
     console.error(err);
     if (err.code === '23505') {
       return res.status(409).json({ error: 'part_code already exists' });
