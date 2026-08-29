@@ -41,9 +41,9 @@ router.post('/generate', async (req, res) => {
     }
     const partCode = childResult.rows[0].part_code;
 
-    // Unique code: PARTCODE-BATCH-timestamp-random
-    const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-    const qrCodeValue = `${partCode}-${batch_no || 'NA'}-${uniqueSuffix}`;
+    // Keep the scan value to just the part code so a scanned child-part QR displays
+    // the readable code only, without batch/timestamp noise.
+    const qrCodeValue = partCode;
 
     const insertResult = await pool.query(
       `INSERT INTO qr_code_master (qr_code, child_part_id, batch_no)
@@ -81,8 +81,7 @@ router.post('/generate-bulk', async (req, res) => {
     const generated = [];
 
     for (let i = 0; i < count; i++) {
-      const uniqueSuffix = `${Date.now()}${Math.floor(Math.random() * 100000)}`;
-      const qrCodeValue = `${partCode}-${batch_no || 'NA'}-${uniqueSuffix}`;
+      const qrCodeValue = partCode;
       const insertResult = await pool.query(
         `INSERT INTO qr_code_master (qr_code, child_part_id, batch_no)
          VALUES ($1, $2, $3) RETURNING *`,
