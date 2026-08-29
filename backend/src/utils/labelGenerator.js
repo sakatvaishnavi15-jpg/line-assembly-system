@@ -71,10 +71,20 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
 
     doc.image(qrBuffer, qrX, rowTop, { width: qrSize, height: qrSize });
 
+    if (mainPartBrand) {
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(12)
+        .text(String(mainPartBrand).toUpperCase(), leftGroupX, rowTop + qrSize + 10, {
+          width: leftGroupWidth,
+          align: 'center'
+        });
+    }
+
     const barcodeWidth = 214;
     const barcodeHeight = 72;
     const barcodeX = leftGroupX + (leftGroupWidth - barcodeWidth) / 2;
-    const barcodeY = rowTop + qrSize + 18;
+    const barcodeY = rowTop + qrSize + 42;
     doc.image(barcodeBuffer, barcodeX, barcodeY, { width: barcodeWidth, height: barcodeHeight });
 
     doc
@@ -84,16 +94,6 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
         width: barcodeWidth + 16,
         align: 'center'
       });
-
-    if (mainPartBrand) {
-      doc
-        .font('Helvetica-Bold')
-        .fontSize(9.5)
-        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 8, barcodeY + barcodeHeight + 26, {
-          width: barcodeWidth + 16,
-          align: 'center'
-        });
-    }
 
     // ---- Right column: NAME / QTY. table ----
     const tableX = leftGroupX + leftGroupWidth + 26;
