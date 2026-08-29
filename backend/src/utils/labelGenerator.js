@@ -20,26 +20,33 @@ const bwipjs = require('bwip-js');
 function normalizeBrandText(value) {
   const cleaned = String(value ?? '').trim();
   if (!cleaned) return 'IFB';
-  const withoutSuffix = cleaned.replace(/\s*\d+\s*$/, '').trim();
-  return withoutSuffix || 'IFB';
+
+  const withoutTrailingNumber = cleaned.replace(/\s*\d+\s*$/, '').trim();
+  const withoutTrailingCode = withoutTrailingNumber.replace(/\s*[-_\s]+\d+\s*$/, '').trim();
+  const normalized = withoutTrailingCode || withoutTrailingNumber || cleaned;
+
+  return normalized || 'IFB';
 }
 
 async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, buildSerialNo, displayCode, checklist }) {
-  const codeToShow = displayCode || buildSerialNo;
+  const codeToShow = String(displayCode || buildSerialNo || '').toUpperCase();
   const brandText = normalizeBrandText(mainPartBrand);
 
   // QR encodes the build serial number (used for scanning/traceability lookups)
   const qrBuffer = await QRCode.toBuffer(buildSerialNo, { margin: 1, width: 300 });
 
-  // Barcode encodes the same human-readable display code printed beneath it
+  // Barcode encodes the same human-readable display code printed beneath it.
+  // Keep the text uppercase and the symbol wide enough to scan reliably.
   const barcodeBuffer = await bwipjs.toBuffer({
     bcid: 'code128',
     text: codeToShow,
-    scale: 7,
-    height: 38,
+    scale: 6,
+    height: 36,
     includetext: false,
-    paddingwidth: 12,
-    paddingheight: 12
+    paddingwidth: 10,
+    paddingheight: 10,
+    backgroundcolor: 'ffffff',
+    barcolor: '000000'
   });
 
   return new Promise((resolve, reject) => {
@@ -71,36 +78,39 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
 
     const rowTop = contentTop + 40;
 
-    // ---- Left column: QR code + barcode + human-readable code ----
+    // ---- Left column: QR code + centered barcode + sticker label below ----
     const leftGroupX = contentX + 8;
     const leftGroupWidth = 220;
     const qrSize = 170;
     const qrX = leftGroupX + (leftGroupWidth - qrSize) / 2;
     const qrBoxX = qrX - 10;
     const qrBoxY = rowTop - 8;
+    const qrCenterX = leftGroupX + leftGroupWidth / 2;
 
     doc.rect(qrBoxX, qrBoxY, qrSize + 20, qrSize + 20).stroke();
     doc.image(qrBuffer, qrX, rowTop, { width: qrSize, height: qrSize });
 
     const barcodeWidth = 242;
     const barcodeHeight = 84;
-    const barcodeX = leftGroupX + (leftGroupWidth - barcodeWidth) / 2;
+    const barcodeX = qrCenterX - barcodeWidth / 2;
     const barcodeY = rowTop + qrSize + 24;
     doc.image(barcodeBuffer, barcodeX, barcodeY, { width: barcodeWidth, height: barcodeHeight });
 
+    const codeY = barcodeY + barcodeHeight + 12;
     doc
       .font('Helvetica-Bold')
       .fontSize(16)
-      .text(codeToShow.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 12, {
+      .text(codeToShow, barcodeX - 10, codeY, {
         width: barcodeWidth + 20,
         align: 'center'
       });
 
     if (brandText) {
+      const brandY = codeY + 26;
       doc
         .font('Helvetica-Bold')
         .fontSize(12)
-        .text(brandText.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 38, {
+        .text(brandText.toUpperCase(), barcodeX - 10, brandY, {
           width: barcodeWidth + 20,
           align: 'center'
         });
