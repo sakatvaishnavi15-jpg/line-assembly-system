@@ -1,8 +1,75 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
 const router = express.Router();
 const QRCode = require('qrcode');
 const pool = require('../db');
 const { generateBuildLabelPDF } = require('../utils/labelGenerator');
+
+async function writePrinterFile(mainPartName, checklist, buildSerialNo, mainPartCode) {
+  const printDir = 'C:\\print';
+  const templatePath = path.join(printDir, 'PRINT.prn');
+  const outputPath = path.join(printDir, 'PRINT.txt');
+
+  const template = await fs.promises.readFile(templatePath, 'utf8');
+
+  const childRows = checklist.slice(0, 12);
+  const rowY = [501, 472, 440, 411, 382, 353, 321, 292, 260, 231, 203, 173];
+
+  let output = template;
+  output = output.replace(/@PARTNAME/gi, mainPartName);
+  output = output.replace(/@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, buildSerialNo);
+  output = output.replace(/!104@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, `!104${buildSerialNo}`);
+  output = output.replace(/QRCODE\s+775,456,L,8,A,180,M2,S7,"[^"]*"/i, `QRCODE 775,456,L,8,A,180,M2,S7,"${buildSerialNo}"`);
+  output = output.replace(/TEXT\s+642,44,"0",180,12,12,"[^"]*"/i, `TEXT 642,44,"0",180,12,12,"${buildSerialNo}"`);
+
+  const itemNames = childRows.map((item) => String(item.part_name || '').toUpperCase());
+  const itemQtys = childRows.map((item) => String(item.qty_required ?? ''));
+
+  itemNames.forEach((name, index) => {
+    const y = rowY[index];
+    if (typeof y === 'number') {
+      output = output.replace(
+        new RegExp(`TEXT 505,${y},"0",180,9,9,"[^"]*"`, 'i'),
+        `TEXT 505,${y},"0",180,9,9,"${name || ''}"`
+      );
+      output = output.replace(
+        new RegExp(`TEXT 62,${y},"0",180,9,9,"[0-9]*"`, 'i'),
+        `TEXT 62,${y},"0",180,9,9,"${itemQtys[index] || '0'}"`
+      );
+    }
+  });
+
+  const remainingRows = checklist.length;
+  for (let index = remainingRows; index < rowY.length; index += 1) {
+    const y = rowY[index];
+    output = output.replace(
+      new RegExp(`TEXT 505,${y},"0",180,9,9,"[^"]*"`, 'i'),
+      `TEXT 505,${y},"0",180,9,9,""`
+    );
+    output = output.replace(
+      new RegExp(`TEXT 62,${y},"0",180,9,9,"[0-9]*"`, 'i'),
+      `TEXT 62,${y},"0",180,9,9,"0"`
+    );
+  }
+
+  await fs.promises.writeFile(outputPath, output, 'utf8');
+
+  await new Promise((resolve, reject) => {
+    const batPath = path.join(printDir, 'PRINT.bat');
+    const child = spawn('cmd.exe', ['/c', batPath], {
+      cwd: printDir,
+      stdio: 'inherit'
+    });
+
+    child.on('error', reject);
+    child.on('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`PRINT.bat exited with code ${code}`));
+    });
+  });
+}
 
 // -------------------------------------------------------
 // START A NEW ROUND
@@ -229,6 +296,20 @@ router.post('/:roundId/scan', async (req, res) => {
         [buildSerialNo, roundId]
       );
       updatedRound = completeResult.rows[0];
+
+      const checklistRows = await getChecklistWithClient(client, roundId, round.main_part_id);
+      const mainPartDetails = await client.query(
+        'SELECT part_code, part_name FROM main_part_master WHERE main_part_id = $1',
+        [round.main_part_id]
+      );
+      const currentMainPartCode = mainPartDetails.rows[0]?.part_code || '';
+
+      await writePrinterFile(
+        mainPartDetails.rows[0]?.part_name || '',
+        checklistRows,
+        buildSerialNo,
+        currentMainPartCode
+      );
 
       // Note: the full printable label (QR + barcode + parts table) is generated
       // on demand via GET /api/rounds/:roundId/label — we just flag it's ready here.
