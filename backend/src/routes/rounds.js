@@ -128,16 +128,10 @@ router.post('/:roundId/scan', async (req, res) => {
     }
     const bomLine = bomResult.rows[0];
 
-    // 4. Check this exact QR hasn't already been scanned successfully in this round
-    const dupCheck = await client.query(
-      `SELECT * FROM scan_log WHERE round_id = $1 AND qr_id = $2 AND result = 'Pass'`,
-      [roundId, qrRow.qr_id]
-    );
-    if (dupCheck.rows.length > 0) {
-      await logScan(client, roundId, childPartId, qrRow.qr_id, 'Fail-Duplicate', 'This exact QR was already scanned in this round');
-      await client.query('COMMIT');
-      return res.status(400).json({ result: 'Fail-Duplicate', message: 'This part was already scanned in this round' });
-    }
+    // 4. Allow repeated scans for the same child part while the required quantity for
+    // that part has not yet been reached. The quantity check below is the real gate.
+    // Exact-QR duplication is only enforced by the required count, not by an early
+    // hard-coded "already scanned" error.
 
     // 5. Check quantity not already fulfilled for this child part
     const countResult = await client.query(
