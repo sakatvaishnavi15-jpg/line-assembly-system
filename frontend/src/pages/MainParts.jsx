@@ -118,8 +118,9 @@ export default function MainParts() {
             <div className="field">
               <label>IFB</label>
               <input
+                placeholder="e.g. IFB"
                 value={form.brand}
-                readOnly
+                onChange={(e) => setForm({ ...form, brand: e.target.value })}
               />
             </div>
             <div className="field" style={{ flex: 2 }}>
@@ -185,7 +186,10 @@ export default function MainParts() {
                     </td>
                     <td>
                       {isEditing ? (
-                        <input value={draft.brand || 'IFB'} readOnly />
+                        <input
+                          value={draft.brand || 'IFB'}
+                          onChange={(e) => setDraft({ ...draft, brand: e.target.value })}
+                        />
                       ) : (
                         p.brand || 'IFB'
                       )}

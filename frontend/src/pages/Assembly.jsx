@@ -40,31 +40,52 @@ export default function Assembly({ onExit }) {
     if (!round || !finishedLabel) return;
 
     const printUrl = `${getApiBase()}${finishedLabel.label_endpoint}`;
-    const labelWindow = window.open(printUrl, '_blank', 'noopener,noreferrer');
+    const triggerPrint = () => {
+      try {
+        const labelWindow = window.open(printUrl, '_blank', 'noopener,noreferrer');
 
-    if (labelWindow) {
-      labelWindow.focus();
-      const triggerPrint = () => {
-        try {
+        if (labelWindow) {
           labelWindow.focus();
-          labelWindow.print();
-        } catch (error) {
-          // Browser may block programmatic print; the PDF still opens for review.
+          setTimeout(() => {
+            try {
+              labelWindow.print();
+            } catch (error) {
+              // Browser can still block the print dialog; the PDF remains open for review.
+            }
+          }, 700);
+          return;
         }
-      };
 
-      if (labelWindow.addEventListener) {
-        labelWindow.addEventListener('load', () => {
-          setTimeout(triggerPrint, 600);
-        }, { once: true });
-      } else {
-        setTimeout(triggerPrint, 600);
+        const printFrame = document.createElement('iframe');
+        printFrame.src = printUrl;
+        printFrame.style.position = 'fixed';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = '0';
+        printFrame.style.opacity = '0';
+        printFrame.style.pointerEvents = 'none';
+        document.body.appendChild(printFrame);
+
+        printFrame.onload = () => {
+          setTimeout(() => {
+            try {
+              printFrame.contentWindow?.focus();
+              printFrame.contentWindow?.print();
+            } catch (error) {
+              // PDF fallback already opened in the background if the print call is blocked.
+            }
+          }, 800);
+        };
+      } catch (error) {
+        // If both print routes are blocked, the label still opens for manual review.
       }
-    }
+    };
+
+    triggerPrint();
 
     const timer = setTimeout(() => {
       handleNextRound();
-    }, 1200);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [round, finishedLabel]);

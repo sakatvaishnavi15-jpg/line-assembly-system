@@ -312,8 +312,18 @@ router.get('/:roundId/label', async (req, res) => {
     );
     const mainPartName = mainPartResult.rows[0].part_name;
 
-    // Always display the required IFB brand under the build label barcode.
-    const mainPartBrand = 'IFB';
+    let mainPartBrand = 'IFB';
+    try {
+      const brandResult = await pool.query(
+        'SELECT brand FROM main_part_master WHERE main_part_id = $1',
+        [round.main_part_id]
+      );
+      mainPartBrand = brandResult.rows[0]?.brand || 'IFB';
+    } catch (err) {
+      if (err.code !== '42703') {
+        throw err;
+      }
+    }
 
     // qty_required here doubles as the "parts used" list for the label table
     const checklist = await getChecklist(roundId, round.main_part_id);
