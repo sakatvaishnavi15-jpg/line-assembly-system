@@ -40,7 +40,7 @@ CREATE TABLE bom_link (
 -- Each physical unit/batch of a child part gets a unique QR code
 CREATE TABLE qr_code_master (
     qr_id           SERIAL PRIMARY KEY,
-    qr_code         VARCHAR(100) UNIQUE NOT NULL, -- the actual encoded string
+    qr_code         VARCHAR(100) NOT NULL, -- the actual encoded string
     child_part_id   INT NOT NULL REFERENCES child_part_master(child_part_id) ON DELETE RESTRICT,
     batch_no        VARCHAR(50),
     status          VARCHAR(20) DEFAULT 'Active', -- Active / Used / Blocked

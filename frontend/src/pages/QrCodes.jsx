@@ -132,7 +132,6 @@ export default function QrCodes() {
               <input
                 type="number"
                 min="1"
-                max="200"
                 value={count}
                 onChange={(e) => setCount(e.target.value)}
               />

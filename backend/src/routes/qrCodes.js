@@ -45,11 +45,20 @@ router.post('/generate', async (req, res) => {
     // the readable code only, without batch/timestamp noise.
     const qrCodeValue = partCode;
 
-    const insertResult = await pool.query(
-      `INSERT INTO qr_code_master (qr_code, child_part_id, batch_no)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [qrCodeValue, child_part_id, batch_no || null]
-    );
+    let insertResult = { rows: [{ qr_code: qrCodeValue, child_part_id, batch_no: batch_no || null }] };
+    try {
+      insertResult = await pool.query(
+        `INSERT INTO qr_code_master (qr_code, child_part_id, batch_no)
+         VALUES ($1, $2, $3) RETURNING *`,
+        [qrCodeValue, child_part_id, batch_no || null]
+      );
+    } catch (err) {
+      // Allow the same child-part QR value to be reused unlimited times for printing.
+      // The scanner accepts raw part-code values, so a duplicate insert is not fatal.
+      if (err.code !== '23505') {
+        throw err;
+      }
+    }
 
     const qrImageDataUrl = await QRCode.toDataURL(qrCodeValue);
 
@@ -82,11 +91,16 @@ router.post('/generate-bulk', async (req, res) => {
 
     for (let i = 0; i < count; i++) {
       const qrCodeValue = partCode;
-      const insertResult = await pool.query(
-        `INSERT INTO qr_code_master (qr_code, child_part_id, batch_no)
-         VALUES ($1, $2, $3) RETURNING *`,
-        [qrCodeValue, child_part_id, batch_no || null]
-      );
+      let insertResult = { rows: [{ qr_code: qrCodeValue, child_part_id, batch_no: batch_no || null }] };
+      try {
+        insertResult = await pool.query(
+          `INSERT INTO qr_code_master (qr_code, child_part_id, batch_no)
+           VALUES ($1, $2, $3) RETURNING *`,
+          [qrCodeValue, child_part_id, batch_no || null]
+        );
+      } catch (err) {
+        if (err.code !== '23505') throw err;
+      }
       const qrImageDataUrl = await QRCode.toDataURL(qrCodeValue);
       generated.push({ ...insertResult.rows[0], qr_image: qrImageDataUrl });
     }

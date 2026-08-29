@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast';
 export default function MainParts() {
   const [parts, setParts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ part_code: '', part_name: '', brand: '', description: '' });
+  const [form, setForm] = useState({ part_code: '', part_name: '', brand: 'IFB', description: '' });
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -37,7 +37,7 @@ export default function MainParts() {
     try {
       await api.createMainPart(form);
       showToast(`Created "${form.part_name}"`);
-      setForm({ part_code: '', part_name: '', brand: '', description: '' });
+      setForm({ part_code: '', part_name: '', brand: 'IFB', description: '' });
       load();
     } catch (err) {
       showToast(err.message, 'error');
@@ -51,7 +51,7 @@ export default function MainParts() {
     setDraft({
       part_code: part.part_code,
       part_name: part.part_name,
-      brand: part.brand || '',
+      brand: part.brand || 'IFB',
       description: part.description || '',
       revision: part.revision || 'A',
       status: part.status || 'Active'
@@ -116,11 +116,10 @@ export default function MainParts() {
               />
             </div>
             <div className="field">
-              <label>Brand (optional)</label>
+              <label>IFB</label>
               <input
-                placeholder="e.g. KXG"
                 value={form.brand}
-                onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                readOnly
               />
             </div>
             <div className="field" style={{ flex: 2 }}>
@@ -186,12 +185,9 @@ export default function MainParts() {
                     </td>
                     <td>
                       {isEditing ? (
-                        <input
-                          value={draft.brand}
-                          onChange={(e) => setDraft({ ...draft, brand: e.target.value })}
-                        />
+                        <input value={draft.brand || 'IFB'} readOnly />
                       ) : (
-                        p.brand || '—'
+                        p.brand || 'IFB'
                       )}
                     </td>
                     <td>
