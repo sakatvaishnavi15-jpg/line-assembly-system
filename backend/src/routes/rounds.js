@@ -8,67 +8,85 @@ const pool = require('../db');
 const { generateBuildLabelPDF } = require('../utils/labelGenerator');
 
 async function writePrinterFile(mainPartName, checklist, buildSerialNo, mainPartCode) {
+  if (process.platform !== 'win32') {
+    console.log('Printer bridge skipped: not running on Windows.');
+    return;
+  }
+
   const printDir = 'C:\\print';
   const templatePath = path.join(printDir, 'PRINT.prn');
   const outputPath = path.join(printDir, 'PRINT.txt');
 
-  const template = await fs.promises.readFile(templatePath, 'utf8');
+  if (!fs.existsSync(printDir) || !fs.existsSync(templatePath)) {
+    console.log('Printer bridge skipped: C:\\print template not available in this environment.');
+    return;
+  }
 
-  const childRows = checklist.slice(0, 12);
-  const rowY = [501, 472, 440, 411, 382, 353, 321, 292, 260, 231, 203, 173];
+  try {
+    const template = await fs.promises.readFile(templatePath, 'utf8');
 
-  let output = template;
-  output = output.replace(/@PARTNAME/gi, mainPartName);
-  output = output.replace(/@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, buildSerialNo);
-  output = output.replace(/!104@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, `!104${buildSerialNo}`);
-  output = output.replace(/QRCODE\s+775,456,L,8,A,180,M2,S7,"[^"]*"/i, `QRCODE 775,456,L,8,A,180,M2,S7,"${buildSerialNo}"`);
-  output = output.replace(/TEXT\s+642,44,"0",180,12,12,"[^"]*"/i, `TEXT 642,44,"0",180,12,12,"${buildSerialNo}"`);
+    const childRows = checklist.slice(0, 12);
+    const rowY = [501, 472, 440, 411, 382, 353, 321, 292, 260, 231, 203, 173];
 
-  const itemNames = childRows.map((item) => String(item.part_name || '').toUpperCase());
-  const itemQtys = childRows.map((item) => String(item.qty_required ?? ''));
+    let output = template;
+    output = output.replace(/@PARTNAME/gi, mainPartName);
+    output = output.replace(/@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, buildSerialNo);
+    output = output.replace(/!104@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, `!104${buildSerialNo}`);
+    output = output.replace(/QRCODE\s+775,456,L,8,A,180,M2,S7,"[^"]*"/i, `QRCODE 775,456,L,8,A,180,M2,S7,"${buildSerialNo}"`);
+    output = output.replace(/TEXT\s+642,44,"0",180,12,12,"[^"]*"/i, `TEXT 642,44,"0",180,12,12,"${buildSerialNo}"`);
 
-  itemNames.forEach((name, index) => {
-    const y = rowY[index];
-    if (typeof y === 'number') {
+    const itemNames = childRows.map((item) => String(item.part_name || '').toUpperCase());
+    const itemQtys = childRows.map((item) => String(item.qty_required ?? ''));
+
+    itemNames.forEach((name, index) => {
+      const y = rowY[index];
+      if (typeof y === 'number') {
+        output = output.replace(
+          new RegExp(`TEXT 505,${y},"0",180,9,9,"[^"]*"`, 'i'),
+          `TEXT 505,${y},"0",180,9,9,"${name || ''}"`
+        );
+        output = output.replace(
+          new RegExp(`TEXT 62,${y},"0",180,9,9,"[0-9]*"`, 'i'),
+          `TEXT 62,${y},"0",180,9,9,"${itemQtys[index] || '0'}"`
+        );
+      }
+    });
+
+    for (let index = checklist.length; index < rowY.length; index += 1) {
+      const y = rowY[index];
       output = output.replace(
         new RegExp(`TEXT 505,${y},"0",180,9,9,"[^"]*"`, 'i'),
-        `TEXT 505,${y},"0",180,9,9,"${name || ''}"`
+        `TEXT 505,${y},"0",180,9,9,""`
       );
       output = output.replace(
         new RegExp(`TEXT 62,${y},"0",180,9,9,"[0-9]*"`, 'i'),
-        `TEXT 62,${y},"0",180,9,9,"${itemQtys[index] || '0'}"`
+        `TEXT 62,${y},"0",180,9,9,"0"`
       );
     }
-  });
 
-  const remainingRows = checklist.length;
-  for (let index = remainingRows; index < rowY.length; index += 1) {
-    const y = rowY[index];
-    output = output.replace(
-      new RegExp(`TEXT 505,${y},"0",180,9,9,"[^"]*"`, 'i'),
-      `TEXT 505,${y},"0",180,9,9,""`
-    );
-    output = output.replace(
-      new RegExp(`TEXT 62,${y},"0",180,9,9,"[0-9]*"`, 'i'),
-      `TEXT 62,${y},"0",180,9,9,"0"`
-    );
-  }
+    await fs.promises.writeFile(outputPath, output, 'utf8');
 
-  await fs.promises.writeFile(outputPath, output, 'utf8');
-
-  await new Promise((resolve, reject) => {
     const batPath = path.join(printDir, 'PRINT.bat');
-    const child = spawn('cmd.exe', ['/c', batPath], {
-      cwd: printDir,
-      stdio: 'inherit'
-    });
+    if (!fs.existsSync(batPath)) {
+      console.log('Printer bridge skipped: PRINT.bat not found in C:\\print.');
+      return;
+    }
 
-    child.on('error', reject);
-    child.on('exit', (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`PRINT.bat exited with code ${code}`));
+    await new Promise((resolve, reject) => {
+      const child = spawn('cmd.exe', ['/c', batPath], {
+        cwd: printDir,
+        stdio: 'inherit'
+      });
+
+      child.on('error', reject);
+      child.on('exit', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`PRINT.bat exited with code ${code}`));
+      });
     });
-  });
+  } catch (err) {
+    console.warn('Printer bridge warning:', err.message);
+  }
 }
 
 // -------------------------------------------------------
