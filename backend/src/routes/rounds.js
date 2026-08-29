@@ -516,6 +516,7 @@ router.get('/:roundId/label', async (req, res) => {
         throw err;
       }
     }
+    mainPartBrand = String(mainPartBrand ?? '').replace(/\s*\d+\s*$/, '').trim() || 'IFB';
 
     // qty_required here doubles as the "parts used" list for the label table
     const checklist = await getChecklist(roundId, round.main_part_id);

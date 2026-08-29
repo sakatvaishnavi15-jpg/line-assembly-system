@@ -17,8 +17,16 @@ const bwipjs = require('bwip-js');
  * @param {Array}  opts.checklist     - [{ part_name, qty_required }, ...]
  * @returns {Promise<Buffer>} PDF file as a buffer
  */
+function normalizeBrandText(value) {
+  const cleaned = String(value ?? '').trim();
+  if (!cleaned) return 'IFB';
+  const withoutSuffix = cleaned.replace(/\s*\d+\s*$/, '').trim();
+  return withoutSuffix || 'IFB';
+}
+
 async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, buildSerialNo, displayCode, checklist }) {
   const codeToShow = displayCode || buildSerialNo;
+  const brandText = normalizeBrandText(mainPartBrand);
 
   // QR encodes the build serial number (used for scanning/traceability lookups)
   const qrBuffer = await QRCode.toBuffer(buildSerialNo, { margin: 1, width: 300 });
@@ -85,11 +93,11 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
         align: 'center'
       });
 
-    if (mainPartBrand) {
+    if (brandText) {
       doc
         .font('Helvetica-Bold')
         .fontSize(9.5)
-        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 14, barcodeY + barcodeHeight + 26, {
+        .text(brandText.toUpperCase(), barcodeX - 14, barcodeY + barcodeHeight + 26, {
           width: barcodeWidth + 28,
           align: 'center'
         });
