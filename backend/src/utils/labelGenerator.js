@@ -66,34 +66,37 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
     // ---- Left column: QR code + barcode + human-readable code ----
     const leftGroupX = contentX + 8;
     const leftGroupWidth = 220;
-    const qrSize = 156;
+    const qrSize = 170;
     const qrX = leftGroupX + (leftGroupWidth - qrSize) / 2;
+    const qrBoxX = qrX - 10;
+    const qrBoxY = rowTop - 8;
 
+    doc.rect(qrBoxX, qrBoxY, qrSize + 20, qrSize + 20).stroke();
     doc.image(qrBuffer, qrX, rowTop, { width: qrSize, height: qrSize });
+
+    const barcodeWidth = 242;
+    const barcodeHeight = 84;
+    const barcodeX = leftGroupX + (leftGroupWidth - barcodeWidth) / 2;
+    const barcodeY = rowTop + qrSize + 24;
+    doc.image(barcodeBuffer, barcodeX, barcodeY, { width: barcodeWidth, height: barcodeHeight });
+
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(16)
+      .text(codeToShow.toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 12, {
+        width: barcodeWidth + 20,
+        align: 'center'
+      });
 
     if (mainPartBrand) {
       doc
         .font('Helvetica-Bold')
         .fontSize(12)
-        .text(String(mainPartBrand).toUpperCase(), leftGroupX, rowTop + qrSize + 10, {
-          width: leftGroupWidth,
+        .text(String(mainPartBrand).toUpperCase(), barcodeX - 10, barcodeY + barcodeHeight + 38, {
+          width: barcodeWidth + 20,
           align: 'center'
         });
     }
-
-    const barcodeWidth = 214;
-    const barcodeHeight = 72;
-    const barcodeX = leftGroupX + (leftGroupWidth - barcodeWidth) / 2;
-    const barcodeY = rowTop + qrSize + 42;
-    doc.image(barcodeBuffer, barcodeX, barcodeY, { width: barcodeWidth, height: barcodeHeight });
-
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(11)
-      .text(codeToShow.toUpperCase(), barcodeX - 8, barcodeY + barcodeHeight + 10, {
-        width: barcodeWidth + 16,
-        align: 'center'
-      });
 
     // ---- Right column: NAME / QTY. table ----
     const tableX = leftGroupX + leftGroupWidth + 26;
