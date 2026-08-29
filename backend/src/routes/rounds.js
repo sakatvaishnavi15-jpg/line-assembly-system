@@ -7,68 +7,169 @@ const QRCode = require('qrcode');
 const pool = require('../db');
 const { generateBuildLabelPDF } = require('../utils/labelGenerator');
 
+const DEFAULT_PRN_TEMPLATE = `<xpml><page quantity='0' pitch='75.1 mm'></xpml>SIZE 101.5 mm, 75.1 mm
+GAP 3 mm, 0 mm
+DIRECTION 0,0
+REFERENCE 0,0
+SPEED 02
+DARKNESS 08
+OFFSET 0 mm
+SET PEEL OFF
+SET CUTTER OFF
+SET PARTIAL_CUTTER OFF
+<xpml></page></xpml><xpml><page quantity='1' pitch='75.1 mm'></xpml>SET TEAR ON
+CLS
+CODEPAGE 1252
+TEXT 784,580,"0",180,12,12,"@PARTNAME"
+TEXT 217,580,"0",180,12,12,"*PARTS LIST"
+TEXT 505,533,"0",180,9,9,"NAME"
+TEXT 82,533,"0",180,9,9,"QTY."
+QRCODE 775,456,L,8,A,180,M2,S7,"@PARTCODE@YYYYMMDD@UNQ@SRNO"
+BARCODE 692,128,"128M",78,0,180,2,4,"!104@PARTCODE@YYYYMMDD@UNQ@SRNO"
+TEXT 642,44,"0",180,12,12,"@PARTCODE@YYYYMMDD@UNQ@SRNO"
+TEXT 505,501,"0",180,9,9,"@CHILDPARTNAME1"
+TEXT 505,472,"0",180,9,9,"@CHILDPARTNAME2"
+TEXT 505,440,"0",180,9,9,"@CHILDPARTNAME3"
+TEXT 505,411,"0",180,9,9,"@CHILDPARTNAME4"
+TEXT 505,382,"0",180,9,9,"@CHILDPARTNAME5"
+TEXT 505,353,"0",180,9,9,"@CHILDPARTNAME6"
+TEXT 505,321,"0",180,9,9,"@CHILDPARTNAME7"
+TEXT 505,292,"0",180,9,9,"@CHILDPARTNAME8"
+TEXT 505,260,"0",180,9,9,"@CHILDPARTNAME9"
+TEXT 505,231,"0",180,9,9,"@CHILDPARTNAME10"
+TEXT 505,203,"0",180,9,9,"@CHILDPARTNAME11"
+TEXT 505,173,"0",180,9,9,"@CHILDPARTNAME12"
+BAR 87,142, 3, 393
+BAR 29,503, 487, 3
+BAR 30,472, 488, 3
+BAR 32,444, 484, 3
+BAR 32,414, 484, 3
+BAR 29,383, 487, 3
+BAR 32,353, 484, 3
+BAR 32,323, 484, 3
+BAR 29,294, 487, 3
+BAR 29,264, 487, 3
+BAR 29,234, 487, 3
+BAR 30,205, 488, 3
+BAR 29,174, 487, 3
+TEXT 62,501,"0",180,9,9,"1"
+TEXT 62,472,"0",180,9,9,"1"
+TEXT 62,440,"0",180,9,9,"1"
+TEXT 62,411,"0",180,9,9,"1"
+TEXT 62,382,"0",180,9,9,"1"
+TEXT 62,353,"0",180,9,9,"1"
+TEXT 62,321,"0",180,9,9,"1"
+TEXT 62,292,"0",180,9,9,"1"
+TEXT 62,260,"0",180,9,9,"1"
+TEXT 62,231,"0",180,9,9,"1"
+TEXT 62,203,"0",180,9,9,"1"
+TEXT 62,173,"0",180,9,9,"1"
+BOX 29,141,519,536,3
+PRINT 1,1
+<xpml></page></xpml><xpml><end/></xpml>`;
+
+function sanitizePrinterText(value, fallback = '') {
+  return String(value ?? fallback)
+    .replace(/\r/g, ' ')
+    .replace(/\n/g, ' ')
+    .replace(/"/g, '')
+    .replace(/,/g, ' ')
+    .trim()
+    .slice(0, 38);
+}
+
+async function readPrintTemplate() {
+  const candidates = [];
+  const envDir = process.env.PRINT_DIR || process.env.PRINTER_DIR;
+  if (envDir) candidates.push(path.resolve(envDir));
+  if (process.platform === 'win32') candidates.push('C:\\print');
+  candidates.push(path.resolve(process.cwd(), 'print'));
+  candidates.push(path.resolve(process.cwd(), 'backend', 'print'));
+
+  const uniqueCandidates = [...new Set(candidates.filter(Boolean))];
+
+  for (const dir of uniqueCandidates) {
+    const templatePath = path.join(dir, 'PRINT.prn');
+    if (fs.existsSync(templatePath)) {
+      return {
+        printDir: dir,
+        template: await fs.promises.readFile(templatePath, 'utf8')
+      };
+    }
+  }
+
+  const fallbackDir = path.resolve(process.cwd(), 'print');
+  await fs.promises.mkdir(fallbackDir, { recursive: true });
+  return {
+    printDir: fallbackDir,
+    template: DEFAULT_PRN_TEMPLATE
+  };
+}
+
 async function writePrinterFile(mainPartName, checklist, buildSerialNo, mainPartCode) {
-  if (process.platform !== 'win32') {
-    console.log('Printer bridge skipped: not running on Windows.');
-    return;
-  }
-
-  const printDir = 'C:\\print';
-  const templatePath = path.join(printDir, 'PRINT.prn');
-  const outputPath = path.join(printDir, 'PRINT.txt');
-
-  if (!fs.existsSync(printDir) || !fs.existsSync(templatePath)) {
-    console.log('Printer bridge skipped: C:\\print template not available in this environment.');
-    return;
-  }
-
   try {
-    const template = await fs.promises.readFile(templatePath, 'utf8');
+    const { printDir, template } = await readPrintTemplate();
+    const outputPath = path.join(printDir, 'PRINT.txt');
 
-    const childRows = checklist.slice(0, 12);
+    const childRows = Array.isArray(checklist) ? checklist.slice(0, 12) : [];
     const rowY = [501, 472, 440, 411, 382, 353, 321, 292, 260, 231, 203, 173];
 
     let output = template;
-    output = output.replace(/@PARTNAME/gi, mainPartName);
-    output = output.replace(/@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, buildSerialNo);
-    output = output.replace(/!104@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, `!104${buildSerialNo}`);
-    output = output.replace(/QRCODE\s+775,456,L,8,A,180,M2,S7,"[^"]*"/i, `QRCODE 775,456,L,8,A,180,M2,S7,"${buildSerialNo}"`);
-    output = output.replace(/TEXT\s+642,44,"0",180,12,12,"[^"]*"/i, `TEXT 642,44,"0",180,12,12,"${buildSerialNo}"`);
+    const safePartName = sanitizePrinterText(mainPartName, 'PART NAME');
+    const safeSerial = sanitizePrinterText(buildSerialNo, 'SERIAL');
 
-    const itemNames = childRows.map((item) => String(item.part_name || '').toUpperCase());
-    const itemQtys = childRows.map((item) => String(item.qty_required ?? ''));
+    output = output.replace(/@PARTNAME/gi, safePartName);
+    output = output.replace(/@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, safeSerial);
+    output = output.replace(/!104@PARTCODE@YYYYMMDD@UNQ@SRNO/gi, `!104${safeSerial}`);
+    output = output.replace(/QRCODE\s+775,456,L,8,A,180,M2,S7,"[^"]*"/i, `QRCODE 775,456,L,8,A,180,M2,S7,"${safeSerial}"`);
+    output = output.replace(/TEXT\s+642,44,"0",180,12,12,"[^"]*"/i, `TEXT 642,44,"0",180,12,12,"${safeSerial}"`);
 
-    itemNames.forEach((name, index) => {
+    childRows.forEach((item, index) => {
       const y = rowY[index];
+      const name = sanitizePrinterText(item.part_name || `ITEM ${index + 1}`);
+      const qty = String(item.qty_required ?? '1');
+
       if (typeof y === 'number') {
         output = output.replace(
-          new RegExp(`TEXT 505,${y},"0",180,9,9,"[^"]*"`, 'i'),
-          `TEXT 505,${y},"0",180,9,9,"${name || ''}"`
+          new RegExp(`TEXT 505,${y},\\"0\\",180,9,9,\\"[^\\"]*\\"`, 'i'),
+          `TEXT 505,${y},\"0\",180,9,9,\"${name}\"`
         );
         output = output.replace(
-          new RegExp(`TEXT 62,${y},"0",180,9,9,"[0-9]*"`, 'i'),
-          `TEXT 62,${y},"0",180,9,9,"${itemQtys[index] || '0'}"`
+          new RegExp(`TEXT 62,${y},\\"0\\",180,9,9,\\"[0-9]*\\"`, 'i'),
+          `TEXT 62,${y},\"0\",180,9,9,\"${qty}\"`
         );
       }
     });
 
-    for (let index = checklist.length; index < rowY.length; index += 1) {
+    for (let index = childRows.length; index < rowY.length; index += 1) {
       const y = rowY[index];
       output = output.replace(
-        new RegExp(`TEXT 505,${y},"0",180,9,9,"[^"]*"`, 'i'),
-        `TEXT 505,${y},"0",180,9,9,""`
+        new RegExp(`TEXT 505,${y},\\"0\\",180,9,9,\\"[^\\"]*\\"`, 'i'),
+        `TEXT 505,${y},\"0\",180,9,9,\"\"`
       );
       output = output.replace(
-        new RegExp(`TEXT 62,${y},"0",180,9,9,"[0-9]*"`, 'i'),
-        `TEXT 62,${y},"0",180,9,9,"0"`
+        new RegExp(`TEXT 62,${y},\\"0\\",180,9,9,\\"[0-9]*\\"`, 'i'),
+        `TEXT 62,${y},\"0\",180,9,9,\"0\"`
       );
     }
 
+    for (let i = 1; i <= 12; i += 1) {
+      const placeholder = `@CHILDPARTNAME${i}`;
+      const name = childRows[i - 1] ? sanitizePrinterText(childRows[i - 1].part_name || '') : '';
+      output = output.replace(new RegExp(placeholder, 'gi'), name);
+    }
+
+    await fs.promises.mkdir(printDir, { recursive: true });
     await fs.promises.writeFile(outputPath, output, 'utf8');
+
+    if (process.platform !== 'win32') {
+      console.log(`Printer template generated at ${outputPath} (Windows print skipped on this host).`);
+      return;
+    }
 
     const batPath = path.join(printDir, 'PRINT.bat');
     if (!fs.existsSync(batPath)) {
-      console.log('Printer bridge skipped: PRINT.bat not found in C:\\print.');
+      console.log(`Printer template generated at ${outputPath}; PRINT.bat not found in ${printDir}.`);
       return;
     }
 
