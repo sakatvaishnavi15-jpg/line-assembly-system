@@ -27,11 +27,11 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
   const barcodeBuffer = await bwipjs.toBuffer({
     bcid: 'code128',
     text: codeToShow,
-    scale: 5,
-    height: 26,
+    scale: 7,
+    height: 38,
     includetext: false,
-    paddingwidth: 8,
-    paddingheight: 8
+    paddingwidth: 12,
+    paddingheight: 12
   });
 
   return new Promise((resolve, reject) => {
@@ -71,17 +71,17 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
 
     doc.image(qrBuffer, qrX, rowTop, { width: qrSize, height: qrSize });
 
-    const barcodeWidth = 196;
-    const barcodeHeight = 64;
+    const barcodeWidth = 214;
+    const barcodeHeight = 72;
     const barcodeX = leftGroupX + (leftGroupWidth - barcodeWidth) / 2;
-    const barcodeY = rowTop + qrSize + 12;
+    const barcodeY = rowTop + qrSize + 18;
     doc.image(barcodeBuffer, barcodeX, barcodeY, { width: barcodeWidth, height: barcodeHeight });
 
     doc
       .font('Helvetica-Bold')
       .fontSize(11)
-      .text(codeToShow.toUpperCase(), barcodeX - 14, barcodeY + barcodeHeight + 10, {
-        width: barcodeWidth + 28,
+      .text(codeToShow.toUpperCase(), barcodeX - 8, barcodeY + barcodeHeight + 10, {
+        width: barcodeWidth + 16,
         align: 'center'
       });
 
@@ -89,8 +89,8 @@ async function generateBuildLabelPDF({ mainPartName, mainPartBrand, partCode, bu
       doc
         .font('Helvetica-Bold')
         .fontSize(9.5)
-        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 14, barcodeY + barcodeHeight + 26, {
-          width: barcodeWidth + 28,
+        .text(`BRAND: ${String(mainPartBrand).toUpperCase()}`, barcodeX - 8, barcodeY + barcodeHeight + 26, {
+          width: barcodeWidth + 16,
           align: 'center'
         });
     }
